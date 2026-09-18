@@ -1,0 +1,66 @@
+{
+  "name": "ad_keyword_action",
+  "description": "给定一个广告关键词的近期表现，决定下一步动作（加价/降价/暂停/保持/否定）",
+  "version": "0.1.0",
+  "primary": "动作",
+  "state_fields": [
+    "目标ACOS",
+    "关键词",
+    "匹配方式",
+    "曝光",
+    "点击",
+    "花费",
+    "销售额",
+    "订单",
+    "运行天数",
+    "当前出价",
+    "实测ACOS"
+  ],
+  "questions": {
+    "动作": {
+      "type": "choice",
+      "instructions": "按目标 ACOS 口径，这个词下一步最该做的动作是哪一个",
+      "criteria": {
+        "raise": "提高出价以抢更多流量",
+        "lower": "降低出价",
+        "pause": "暂停投放该词",
+        "keep": "保持现状继续观察",
+        "negate": "加为否定词",
+        "other": "以上都不合适"
+      }
+    },
+    "无效花费": {
+      "type": "noul",
+      "instructions": "该词到目前的花费已经属于明显的无效支出"
+    },
+    "紧迫度": {
+      "type": "score",
+      "instructions": "处理这个判断的紧迫程度",
+      "criteria": ["放着不管", "本周内处理", "今天就该处理"]
+    }
+  },
+  "thresholds": {
+    "raise": 0.85,
+    "lower": 0.70,
+    "pause": 0.90,
+    "keep": 0.50,
+    "negate": 0.75,
+    "other": 1.01
+  },
+  "default_threshold": 0.70,
+  "guards": [
+    {
+      "signal": "无效花费",
+      "op": ">",
+      "value": 0.80,
+      "then": "review",
+      "why": "模型认为花费明显无效时，即使对动作很有把握也先给人工看一眼——否定与暂停都不可轻易回滚"
+    }
+  ],
+  "notes": [
+    "实测ACOS 必须在你的代码里算好再传：该模型不做算术，且计数不可靠（误差随规模增长）",
+    "阈值按动作分别定：keep 错了只是少赚，pause/negate 错了直接丢流量或伤转化",
+    "不要指望 noul 与 choice 的数能互相换算（同题两者可差 20 倍以上）",
+    "state 只给这 11 个字段：实测同一判断加入 26k tokens 无关内容后，置信度可偏 ±0.33"
+  ]
+}

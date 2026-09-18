@@ -1,0 +1,23 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+
+# 密钥与本地配置：一律不提交
+.env
+*.env
+.env.*
+secrets.json
+
+# 真实业务数据不提交（示例数据请放 examples/ 并脱敏）
+*.local.json
+context.local.json
+data/
+
+# 编辑器 / 系统
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

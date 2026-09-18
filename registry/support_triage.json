@@ -1,0 +1,64 @@
+{
+  "name": "support_triage",
+  "description": "Route an inbound support message: team, urgency, frustration, refund intent. English example — the model is most accurate in English.",
+  "version": "0.1.0",
+  "primary": "team",
+  "state_fields": [
+    "subject",
+    "body",
+    "customer_tier",
+    "prior_contacts"
+  ],
+  "questions": {
+    "team": {
+      "type": "choice",
+      "instructions": "Which team should handle this message?",
+      "criteria": {
+        "billing": "Payments, invoices, refunds, duplicate charges",
+        "technical": "Product defects, integrations, API errors",
+        "shipping": "Delivery status, lost or damaged parcels",
+        "sales": "Pre-purchase questions, pricing, plans",
+        "other": "None of the above fit"
+      }
+    },
+    "urgent": {
+      "type": "noul",
+      "instructions": "This message needs a human response today"
+    },
+    "frustration": {
+      "type": "score",
+      "instructions": "How frustrated does the customer appear?",
+      "criteria": [
+        "Calm, stating facts",
+        "Frustrated but civil",
+        "Angry, strong language"
+      ]
+    },
+    "wants_refund": {
+      "type": "noul",
+      "instructions": "The customer is explicitly asking for money back"
+    }
+  },
+  "thresholds": {
+    "billing": 0.70,
+    "technical": 0.70,
+    "shipping": 0.75,
+    "sales": 0.65,
+    "other": 1.01
+  },
+  "default_threshold": 0.70,
+  "guards": [
+    {
+      "signal": "wants_refund",
+      "op": ">",
+      "value": 0.60,
+      "then": "review",
+      "why": "Refund intent always gets a human — routing automation must not answer money questions on its own"
+    }
+  ],
+  "notes": [
+    "English is the model's primary training language; for CJK workloads test on your own data first",
+    "Ask one decision per question and keep them atomic — do not fold 'which team' and 'is it urgent' into one question",
+    "Keep prior_contacts short: unrelated detail both inflates false confidence and dilutes real confidence"
+  ]
+}
