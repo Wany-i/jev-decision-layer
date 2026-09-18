@@ -32,7 +32,7 @@ import time
 import urllib.error
 import urllib.request
 
-__version__ = "0.1.0"
+__version__ = "0.2.0"
 
 DEFAULT_MODEL = "typesafe/jev-1.13"
 DEFAULT_BASE = "https://openrouter.ai"
