@@ -1,0 +1,68 @@
+name: 功能 / 新决策建议
+description: 提一个新能力，或贡献一个新的业务决策
+title: "[Feature] "
+labels: ["enhancement", "triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **新决策可以直接提 PR**（在 `registry/` 加一个 JSON 即可，不用改代码）。
+        这里用来讨论"该不该加 / 边界怎么划"。
+
+  - type: dropdown
+    id: kind
+    attributes:
+      label: 类型
+      options:
+        - 新增一个业务决策（registry JSON）
+        - 改进决策层能力（裁剪 / 门控 / 硬约束 / 返回结构）
+        - 换后端或加后端
+        - 新的接入壳（HTTP / 其它语言 SDK 等）
+        - 文档
+    validations:
+      required: true
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: 你要解决的实际问题
+      description: 不要从"想加个功能"开始，先说清你在什么场景下卡住了。
+    validations:
+      required: true
+
+  - type: textarea
+    id: decision
+    attributes:
+      label: 这个判断长什么样
+      description: |
+        按决策模型的要求描述：答案空间能穷举吗？是哪一种形状？
+        - choice：从一个封闭选项集里选一个
+        - score：落在一个有序标尺上
+        - noul：一个是/否命题
+      placeholder: |
+        决策名：
+        形状：choice / score / noul
+        输入需要哪些字段：
+        需要的选项或档位：
+        做错的代价（决定阈值该多严）：
+    validations:
+      required: true
+
+  - type: textarea
+    id: code_not_model
+    attributes:
+      label: 哪些部分应该在代码里算，不该给模型
+      description: 例如比例、差值、计数、日期先后。这一栏请务必填。
+      placeholder: "ACOS = 花费/销售额（代码算好再传）"
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: 提交前确认
+      options:
+        - label: 我确认这个判断是"语义判断"，不是算术或计数
+          required: true
+        - label: 我确认答案空间能提前穷举（开放式的应该用生成模型，不是这个）
+          required: true

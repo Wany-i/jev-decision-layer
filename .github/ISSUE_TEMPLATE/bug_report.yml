@@ -1,0 +1,83 @@
+name: Bug 报告
+description: 报告一个可复现的问题
+title: "[Bug] "
+labels: ["bug", "triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        感谢反馈。请尽量把下面填全 —— 缺信息的 issue 往往要来回问好几轮才能定位。
+
+        ⚠️ **不要贴 API key**，也不要贴真实业务数据。需要复现时请用脱敏或构造的数据。
+
+  - type: textarea
+    id: what
+    attributes:
+      label: 现象
+      description: 发生了什么？期望是什么？
+      placeholder: |
+        期望：
+        实际：
+    validations:
+      required: true
+
+  - type: textarea
+    id: repro
+    attributes:
+      label: 最小复现
+      description: 能直接跑的最小代码或命令。注册表相关问题请贴出你的 decisions JSON。
+      render: python
+    validations:
+      required: true
+
+  - type: textarea
+    id: output
+    attributes:
+      label: 实际输出 / 报错
+      description: 完整报错或用 `debug=True` 拿到的返回（**请先删掉任何密钥**）
+      render: text
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: 版本 / 提交
+      description: 仓库版本号或 commit
+      placeholder: "v0.1.0 / 2db4d4c"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: 涉及哪一层
+      multiple: true
+      options:
+        - 决策层 decision.py（裁剪 / 门控 / 硬约束 / 返回结构）
+        - 适配层（后端调用 / 端点 / 重试 / 报错）
+        - 注册表（某个 decision JSON）
+        - MCP 壳 mcp_server.py
+        - CLI
+        - 文档
+        - 不确定
+    validations:
+      required: true
+
+  - type: input
+    id: env
+    attributes:
+      label: 运行环境
+      placeholder: "Windows 11 / Python 3.13.12 / 后端 OpenRouter"
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: 提交前确认
+      options:
+        - label: 我已确认这不是"需要算术/计数/日期比较"的场景（那些本来就不该交给决策模型）
+          required: false
+        - label: 我贴出的内容里没有 API key、token 或真实业务数据
+          required: true

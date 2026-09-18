@@ -76,13 +76,16 @@ def gate(answer: dict, threshold: float = 0.70) -> str:
     """
     把答案折成两档：auto（按答案执行） / review（推人复核）
 
-    choice / score 用 confidence；noul 没有 confidence，用"离 0.5 的距离"折算。
+    choice / score 用 confidence；noul 没有 confidence，用"离 0.5 的距离"折算
+    —— 阈值 0.70 表示要求 |p-0.5| >= 0.20，即 p>=0.70 或 p<=0.30 才放行。
+
     阈值必须【按动作】定 —— 做错的代价不同（"加否定词"错了便宜，"暂停投放"错了贵）。
     也【不要】把阈值在 choice / score / noul 之间搬运，它们的数不是一回事。
     """
     if answer.get("type") == "noul":
         p = float(answer.get("noul", 0.5))
-        return "auto" if abs(p - 0.5) >= max(0.0, 0.5 - threshold) else "review"
+        need = max(0.0, threshold - 0.5)      # 需要的"离中点距离"
+        return "auto" if abs(p - 0.5) >= need else "review"
     return "auto" if float(answer.get("confidence", 0.0)) >= threshold else "review"
 
 

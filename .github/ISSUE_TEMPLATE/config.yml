@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: 安全漏洞 / 密钥泄露
+    url: https://github.com/Wany-i/jev-decision-layer/security/advisories/new
+    about: 请勿开公开 issue。用私密渠道报告，详见 SECURITY.md
+  - name: 先读 README 与 CONTRIBUTING
+    url: https://github.com/Wany-i/jev-decision-layer/blob/main/CONTRIBUTING.md
+    about: 很多问题在这两份文件里已经有答案
