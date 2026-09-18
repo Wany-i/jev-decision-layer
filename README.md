@@ -7,8 +7,29 @@
 [![Python](https://img.shields.io/badge/python-3.10%2B-blue.svg)](https://www.python.org/)
 [![Dependencies](https://img.shields.io/badge/dependencies-none-brightgreen.svg)](#依赖与许可)
 
-> ⚠️ **非官方项目。** 第三方封装，与 TypeSafe AI 无任何隶属关系。底层默认调用
-> `typesafe/jev-1.13`（TypeSafe 的 "System One" 决策模型）。
+> ⚠️ **非官方项目。** 第三方封装，与 TypeSafe AI 无任何隶属关系。
+
+---
+
+## 背景：这个项目接的是什么
+
+| 项 | 值 |
+|---|---|
+| **调用平台** | **OpenRouter** —— 走它的 decisions 端点，不是通用的 `chat/completions` |
+| **端点** | `POST https://openrouter.ai/api/alpha/decisions`（注意**没有 `/v1`**，加了会 404） |
+| **模型代号** | **`typesafe/jev-1.13`**（别名 `jev-latest`；实测回答版本 `typesafe/jev-1.13-20260917`；厂商标识 `TypeSafe`） |
+| **模型类型** | "System One" **决策模型**：输入 `state` + 声明式 `questions`，输出类型化答案 + 概率 + 置信度，**不生成文本** |
+| **输出形态** | `answers` 内按问题类型分三种：`choice`（选项 + 概率 + 置信度）/ `score`（分数 + 概率 + 置信度）/ `noul`（是-否概率，**无置信度字段**） |
+| **计费** | 按输入 token 计，$0.042 / 百万 token，**输出免费** |
+| **上下文** | 64k / 请求；其中 `state` + 单条最长问题 ≤ **32k**（硬上限） |
+
+**为什么需要这一层**：该模型不能按常规"接模型"的方式使用 —— 用 `chat/completions` 协议调它**会直接 400**（实测原文：`typesafe/jev-1.13 is a decisions model and cannot be used with the chat/completions endpoint`）。所以"在模型下拉框里选它"这件事本身不成立，必须有一层把它包成可用的工具。
+
+### 脱敏说明
+
+- **不含任何密钥**：key 只在运行时从环境变量 `OPENROUTER_API_KEY` 读取，不写盘、不进日志、不进报错
+- **不含真实业务数据**：`examples/` 与 `registry/` 中的数据均为构造的示例值
+- **不含个人路径、账号标识、客户可识别信息**
 
 ---
 
@@ -239,15 +260,15 @@ else:
 
 ---
 
-## 贡献
+## 贡献与反馈
 
-**Issue 和 PR 都开放，欢迎提。**
+**Issue 与 PR 均接受。**
 
-- 想加一个新决策 → 直接提 PR，在 `registry/` 加一个 JSON 就行，不用改代码
-- 提之前请读 [CONTRIBUTING.md](CONTRIBUTING.md)（里面有自查清单和"什么会被拒"）
+- **新增一个决策** → 直接提 PR：在 `registry/` 加一个 JSON 即可，不用改代码
+- 提交前读 [CONTRIBUTING.md](CONTRIBUTING.md)（含自查清单与"什么会被拒"）
 - Bug / 新功能 → 用对应的 issue 模板
-- **安全漏洞或密钥泄露 → 不要开公开 issue**，走 [SECURITY.md](SECURITY.md) 里的私密渠道
-- 参与即表示同意遵守 [行为准则](CODE_OF_CONDUCT.md)
+- **安全漏洞或密钥泄露 → 不要开公开 issue**，走 [SECURITY.md](SECURITY.md) 的私密渠道
+- 参与即视为同意 [行为准则](CODE_OF_CONDUCT.md)
 
 ---
 
@@ -255,12 +276,13 @@ else:
 
 | 项 | 说明 |
 |---|---|
-| 底层模型 | `typesafe/jev-1.13`（TypeSafe AI 的 "System One" 决策模型），通过 OpenRouter 的 decisions 端点调用 |
-| 本项目 | 独立的第三方封装层。**不是** TypeSafe 官方项目，也**未**获得其背书 |
+| 调用平台 | OpenRouter（decisions 端点） |
+| 模型代号 | `typesafe/jev-1.13`，厂商标识 `TypeSafe` |
+| 本项目 | 独立的第三方封装层，**不是** TypeSafe 官方项目，也**未**获得其背书 |
 | 运行时 | Python 3.10+，仅标准库 |
 | 许可 | MIT |
 
-对底层模型的接口事实、实测数据与局限的记录，见仓库内 `registry/*.json` 的 `notes` 字段与本文档各节。
+对底层模型的接口事实、实测数据与局限，见 `registry/*.json` 的 `notes` 字段与本文档各节。
 
 ## 依赖与许可
 
