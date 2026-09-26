@@ -12,6 +12,20 @@
 - 适配层增加更多后端（当前默认 OpenRouter 的 decisions 端点）
 - 阈值标定脚本：用你的历史人工决策扫多个阈值，输出准确率 / 覆盖率曲线
 
+## [0.3.0] - 2026-09-26
+
+### 新增
+
+- `choose_candidate(goal, state, candidates)`：对实时生成的候选做单次 Jev 选择，验证候选 ID、概率分布和置信度；自动加入 `other` 兜底
+- 每个候选显式声明风险级别；不可逆动作、低置信度和 `other` 均由本层门控为 `review`，本层不执行动作
+- MCP 增加 `choose_candidate`，CLI 增加 `choose --input <文件或 ->`
+- `skills/jev-decision/` 提供 Codex 调用流程和链接目录下可用的 CLI 启动器
+- 新增动态选择离线测试；总计 39 项
+
+### 调整
+
+- `mcp_server.py --selftest` 改为无密钥、无网络的协议与参数校验；真实端点验证需单独执行
+
 ## [0.2.0] - 2026-09-19
 
 **本版只改文档与版本号，未改代码逻辑**：对外接口 `decide()` 与注册表格式均未变。
@@ -72,6 +86,7 @@
 - 仓库内不含任何密钥，运行时从环境变量 `OPENROUTER_API_KEY` 读取
 - **非官方项目**，与 TypeSafe AI 无隶属关系
 
-[未发布]: https://github.com/Wany-i/jev-decision-layer/compare/v0.2.0...HEAD
+[未发布]: https://github.com/Wany-i/jev-decision-layer/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/Wany-i/jev-decision-layer/releases/tag/v0.3.0
 [0.2.0]: https://github.com/Wany-i/jev-decision-layer/releases/tag/v0.2.0
 [0.1.0]: https://github.com/Wany-i/jev-decision-layer/releases/tag/v0.1.0
