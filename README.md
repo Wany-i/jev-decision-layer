@@ -54,12 +54,12 @@
 
 | 你得到 | 具体是什么 |
 |---|---|
-| **一个函数** | `decide(决策名, 业务字段)` → `结论 + 置信度 + 门控`。业务代码里只写这一句 |
+| **两个函数** | `decide(决策名, 业务字段)` 用于注册表决策；`choose_candidate(目标, 状态, 候选)` 用于本轮动态选择。两者都返回结论与门控 |
 | **三个能直接用的决策** | 见下表。也可以只当模板，照抄改成自己的 |
 | **一套加决策的机制** | 在 `registry/` 加一个 JSON 就是新决策，**不用改代码** |
 | **两种现成装载形态** | 命令行、MCP 工具（接进 Agent 即用） |
-| **Agent 里多两个工具** | `list_decisions`（问有哪些决策、要哪些字段）与 `decide`（做判断） |
-| **28 项离线测试** | 不需要 API key、不联网，改完代码立刻能验 |
+| **Agent 里多三个工具** | `list_decisions`、`decide`、`choose_candidate` |
+| **39 项离线测试** | 不需要 API key、不联网，改完代码立刻能验 |
 | **一批调研文档（可选）** | 为什么这么设计、阈值从哪来、这个模型哪些事不能干 —— 见 [`docs/`](docs/) |
 
 **三个自带决策**（既是可直接用的，也是写自己决策的模板）：
@@ -116,25 +116,50 @@ python decision.py list                                   # 有哪些决策
 python decision.py show ad_keyword_action                  # 某个决策要哪些字段
 python decision.py decide ad_keyword_action \
   --context examples/context_ad_keyword.json               # 做一次判断
+python decision.py choose --input candidate-request.json     # 动态候选选择；- 可从标准输入读
 ```
 
-### C. 接进 Agent（MCP）—— 装完 Agent 就多了两个工具
+### C. 动态候选选择：让 Jev 只负责决策
+
+`choose_candidate` 接收调用方已观察到的状态和候选，返回 `outcome`、`confidence`、`gate`、`gate_reason`。它**不会点击或执行**；调用方在 `gate=auto` 后仍须刷新目标并回读结果。
+
+```python
+from decision import choose_candidate
+
+r = choose_candidate(
+    "查看 Codex 剩余用量",
+    {"window": "ChatGPT", "visible_text": "账户菜单"},
+    [
+        {"id": "open_usage", "label": "打开使用情况", "risk": "read_only"},
+        {"id": "sign_out", "label": "退出登录", "risk": "irreversible"},
+    ],
+)
+if r["gate"] == "auto":
+    refresh_target_then_execute_and_verify(r["outcome"])
+else:
+    queue_for_review(r)
+```
+
+每个候选必须声明 `risk=read_only|reversible|irreversible`。本层自动加入 `other`；选中 `other`、低于阈值或选中不可逆动作时返回 `gate=review`。`state` 最多 32,000 字节、候选最多 100 个；只传本轮需要的事实，不要传密钥或整段无关页面。
+
+### D. 接进 Agent（MCP）—— 三个工具
 
 ```json
 {
   "mcpServers": {
     "decision-layer": {
       "command": "python",
-      "args": ["/absolute/path/to/jev-decision-layer/mcp_server.py"],
-      "env": { "OPENROUTER_API_KEY": "sk-or-v1-..." }
+      "args": ["/absolute/path/to/jev-decision-layer/mcp_server.py"]
     }
   }
 }
 ```
 
-不需要 MCP 客户端也能自测：`python mcp_server.py --selftest`
+在 MCP 客户端的运行环境中设置 `OPENROUTER_API_KEY`，不要把密钥写进可提交的配置文件。Codex 的 stdio 配置可以使用 `env_vars = ["OPENROUTER_API_KEY"]` 传递已有环境变量；服务器命令指向本仓库的 `mcp_server.py`。不需要密钥也能做离线自检：`python mcp_server.py --selftest`。
 
-装好之后，Agent 侧的使用方式是：**先问有哪些决策，再带着字段去调**。
+仓库还附有 [Codex Skill](skills/jev-decision/SKILL.md)，用于指导何时调用注册表决策或动态候选决策，以及如何处理 `gate`。Skill 是调用流程，MCP/CLI 才执行决策；可将该目录链接到 `~/.codex/skills/jev-decision`，更新仓库后技能内容同步更新。
+
+装好之后，注册表决策先问 `list_decisions` 再调 `decide`；临时控件或动作列表直接调 `choose_candidate`。
 工具名刻意**不带底层模型名** —— Agent 看到的是"业务决策"，不是"某个模型"。
 
 ---
@@ -244,8 +269,9 @@ python decision.py decide ad_keyword_action \
 ## 项目结构
 
 ```
-decision.py                 核心层：唯一入口 decide()，装载注册表 / 裁剪 / 门控 / 硬约束
-mcp_server.py               MCP 壳（工具：list_decisions、decide）
+decision.py                 核心层：decide() 与 choose_candidate()，注册表 / 候选校验 / 门控
+mcp_server.py               MCP 壳（工具：list_decisions、decide、choose_candidate）
+skills/jev-decision/        Codex Skill 与可从链接目录定位仓库的 CLI 启动器
 registry/                   决策注册表（一份 JSON = 一个决策）
   ├── ad_keyword_action.json    广告关键词下一步动作（中文）
   ├── browser_step.json         浏览器/桌面自动化的风险闸门（中文，演示 guards）
@@ -253,7 +279,7 @@ registry/                   决策注册表（一份 JSON = 一个决策）
 examples/
   ├── quickstart.py             三个可直接跑的场景
   └── context_ad_keyword.json   示例输入
-tests/test_offline.py       离线单元测试（28 项，不需要 key）
+tests/                     离线单元测试（39 项，不需要 key）
 docs/                       调研文档与实现说明（15 份，索引见 docs/README.md）
   ├── README.md                         文档索引与来源声明
   ├── 实现说明-一次决策的内部链路.md          给改造者：调用链、真实报文、改造指南

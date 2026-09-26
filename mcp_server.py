@@ -14,13 +14,14 @@ mcp_server.py —— 把决策层暴露成 MCP 工具（薄壳）
       "mcpServers": {
         "decision-layer": {
           "command": "python",
-          "args": ["C:/path/to/jev-decision-layer/mcp_server.py"],
-          "env": { "OPENROUTER_API_KEY": "sk-or-v1-..." }
+          "args": ["C:/path/to/jev-decision-layer/mcp_server.py"]
         }
       }
     }
 
-自测（不需要 MCP 客户端）:
+在客户端运行环境中提供 OPENROUTER_API_KEY，不要把它写进可提交的配置。
+
+离线自测（不需要 MCP 客户端或密钥）:
     python mcp_server.py --selftest
 """
 
@@ -32,7 +33,7 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from decision import (DecisionError, __version__, decide,  # noqa: E402
+from decision import (DecisionError, __version__, choose_candidate, decide,  # noqa: E402
                       list_decisions, load_decision)
 
 PROTOCOL_VERSION = "2025-06-18"
@@ -86,6 +87,41 @@ def _tools() -> list[dict]:
                 "required": ["decision", "context"],
             },
         },
+        {
+            "name": "choose_candidate",
+            "description": (
+                "Choose one observed action candidate for a goal. This tool only decides; "
+                "it never operates the browser or desktop. The caller must provide concise "
+                "state and classify each candidate as read_only, reversible, or irreversible. "
+                "Execute only when gate=auto, then independently refresh and verify the target."
+            ),
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "goal": {"type": "string", "description": "One concrete objective."},
+                    "state": {"type": "object", "description": "Only the observed facts needed now."},
+                    "candidates": {
+                        "type": "array",
+                        "minItems": 1,
+                        "maxItems": 100,
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "id": {"type": "string"},
+                                "label": {"type": "string"},
+                                "risk": {"type": "string", "enum": [
+                                    "read_only", "reversible", "irreversible"
+                                ]},
+                            },
+                            "required": ["id", "label", "risk"],
+                        },
+                    },
+                    "threshold": {"type": "number", "minimum": 0, "maximum": 1},
+                    "debug": {"type": "boolean"},
+                },
+                "required": ["goal", "state", "candidates"],
+            },
+        },
     ]
 
 
@@ -116,6 +152,21 @@ def call_tool(name: str, args: dict) -> dict:
             head += f"\n已裁掉的无关字段：{', '.join(r['trimmed'])}"
         return {"content": [
             {"type": "text", "text": head},
+            {"type": "text", "text": "```json\n" + json.dumps(r, ensure_ascii=False, indent=2) + "\n```"},
+        ]}
+
+    if name == "choose_candidate":
+        try:
+            r = choose_candidate(
+                args.get("goal"), args.get("state"), args.get("candidates"),
+                threshold=args.get("threshold", 0.75), debug=bool(args.get("debug")),
+            )
+        except DecisionError as e:
+            return {"content": [{"type": "text", "text": f"ERROR: {e}"}], "isError": True}
+        summary = (f"candidate={r['outcome']} confidence={r['confidence']} "
+                   f"gate={r['gate']} reason={r['gate_reason']}")
+        return {"content": [
+            {"type": "text", "text": summary},
             {"type": "text", "text": "```json\n" + json.dumps(r, ensure_ascii=False, indent=2) + "\n```"},
         ]}
 
@@ -160,14 +211,15 @@ def handle(msg: dict) -> None:
 def selftest() -> int:
     print("[1] 可用决策:", ", ".join(list_decisions()))
     print("[2] tools/list ->", [t["name"] for t in _tools()])
-    print("[3] tools/call decide ...")
+    print("[3] tools/call 参数校验（不联网）...")
     out = call_tool("decide", {
         "decision": "support_triage",
-        "context": {"subject": "Charged twice", "body": "I was charged twice for order A-104. Please refund the duplicate charge today.",
-                    "customer_tier": "pro", "prior_contacts": 1},
+        "context": {},
     })
-    print("   ", "❌" if out.get("isError") else "✅", out["content"][0]["text"].replace("\n", "\n    "))
-    return 1 if out.get("isError") else 0
+    choice_out = call_tool("choose_candidate", {"goal": "test", "state": {}, "candidates": []})
+    valid = out.get("isError") and choice_out.get("isError")
+    print("   ", "✅" if valid else "❌", "两个工具均拒绝不完整输入")
+    return 0 if valid else 1
 
 
 def main() -> int:
